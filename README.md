@@ -50,53 +50,44 @@ API -->|"13) Return feed"| U
 
 ```mermaid
 flowchart LR
-  %% =========================
-  %% Guardian MVP Architecture
-  %% =========================
 
-  subgraph Client["Client Layer"]
-    U["Web/Mobile App"]
-    S["Shop Portal (Upload)"]
-  end
+subgraph Client["Client Layer"]
+  U["Web / Mobile App"]
+  S["Shop Portal (Upload)"]
+end
 
-  subgraph Edge["Edge / API Layer"]
-    LB["HTTPS / Reverse Proxy (NGINX)"]
-    API["FastAPI Backend\n(Auth • Feed • Upload)"]
-  end
+subgraph API_Layer["API Layer"]
+  LB["HTTPS / Reverse Proxy"]
+  API["FastAPI Backend (Auth, Feed, Upload)"]
+end
 
-  subgraph Compute["Compute Layer"]
-    W["Worker Service\n(Match + Notify)"]
-    CV["CV Service\n(Detect items)\n(MVP: stub)"]
-  end
+subgraph Compute["Compute Layer"]
+  W["Worker Service (Match + Notify)"]
+  CV["CV Service (Item Detection, MVP Stub)"]
+end
 
-  subgraph Data["Data Layer"]
-    R[("Redis\nCache • Queue • Dedup • Geo/Prefs")]
-    DB[("Postgres\nUsers • Stores • Notification history")]
-    OBJ[("Object Storage\n(Optional)\nImages")]
-  end
+subgraph Data["Data Layer"]
+  R[("Redis (Cache, Queue, Dedup, Geo/Prefs)")]
+  DB[("Postgres (Users, Stores, History)")]
+  OBJ[("Object Storage (Images, Optional)")]
+end
 
-  subgraph External["External Providers (Optional)"]
-    PUSH["Push/SMS/Email\n(FCM/Twilio/SendGrid)"]
-  end
+subgraph External["External Providers"]
+  PUSH["Push / SMS / Email"]
+end
 
-  %% Client -> API
-  U -->|"HTTPS"| LB --> API
-  S -->|"HTTPS (image upload)"| LB --> API
+U --> LB --> API
+S --> LB --> API
 
-  %% API -> CV + storage
-  API -->|"Invoke inference"| CV
-  API -->|"Store image (optional)"| OBJ
+API --> CV
+API --> OBJ
+API --> DB
+API --> R
 
-  %% API -> Data
-  API -->|"Read/Write"| DB
-  API -->|"Cache live surplus (TTL)\nEnqueue events"| R
+R --> W
+W --> R
+W --> DB
+W --> PUSH
 
-  %% Worker -> Data + Providers
-  R -->|"Pop events (BRPOP/Streams)"| W
-  W -->|"Geo + Pref lookup\nDedup key (NX+TTL)"| R
-  W -->|"Persist notification (optional)"| DB
-  W -->|"Send alerts"| PUSH
-
-  %% Alerts to users
-  PUSH -->|"Notification"| U
+PUSH --> U
 ```
