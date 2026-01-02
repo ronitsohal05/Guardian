@@ -1,0 +1,232 @@
+Here’s a 2-week (14-day) step-by-step plan that maps directly to your API ↔ CV service ↔ Redis (cache/queue/dedup) ↔ Worker ↔ Notifier ↔ Client feed flow. 
+
+Using:
+Docker -> Redis + MongoDB
+Flask for Backend
+
+
+README
+
+Week 1 — Build the “happy path” end-to-end (even if CV + notifications are stubbed)
+Day 1: Repo + skeleton services
+
+Create a monorepo (or /api, /worker, /cv, /client folders).
+
+Docker Compose with:
+
+api (FastAPI/Flask)
+
+redis
+
+db (Postgres or Mongo)
+
+worker
+
+cv (stub service)
+
+Define shared config: env vars, ports, basic health checks.
+
+Deliverable: docker compose up brings up all services.
+
+Day 2: Data model + minimal auth
+
+DB schema (minimum):
+
+users (contact channels, notification opt-in)
+
+stores (store_id, location)
+
+user_prefs (radius, item types, etc.)
+
+surplus_events (history, optional for MVP)
+
+Implement auth (JWT/session) just enough for:
+
+user signup/login
+
+save preferences + location
+
+Deliverable: user can log in + save prefs.
+
+Day 3: API endpoints for upload + feed (no CV yet)
+
+Implement:
+
+POST /upload (shop staff): accepts image + store_id
+
+GET /feed (users): returns “live surplus” (from Redis) + optional history (DB)
+
+For now, hardcode a fake detection result and push it through your pipeline (next day).
+
+Deliverable: upload returns a placeholder detection, feed returns placeholder items.
+
+Day 4: Redis data shapes (cache + queue)
+
+Implement Redis structures that match your diagram:
+
+Cache “live surplus” (TTL): e.g. surplus:{store_id} or surplus:geo:{cell}
+
+Queue: events stream/list (e.g. Redis Streams XADD events …)
+
+Dedup key: e.g. dedup:{store_id}:{item}:{bucket_time} with TTL
+
+Deliverable: API writes:
+
+live cache (TTL)
+
+queue event
+
+(optional) DB record
+
+Day 5: Worker v1 (match + dedup + notify stub)
+
+Worker loop:
+
+Consume event from Redis queue/stream
+
+Load prefs + geo lookup from Redis/DB
+
+Dedup check/set (atomic if possible)
+
+“Notify” by logging or writing to a notifications list/table
+
+Deliverable: upload triggers worker “match” and produces notification records.
+
+Day 6: CV service stub → real interface
+
+Define CV service contract: POST /infer → returns {items:[...], confidence, metadata}
+
+Replace API’s fake detections with a real call to CV service (even if CV returns canned output initially).
+
+Deliverable: API calls CV service and uses its output to build events.
+
+Day 7: E2E demo day (first milestone)
+
+Run a full scenario:
+
+shop uploads image
+
+API → CV → caches surplus + enqueues event
+
+worker matches + creates notification record
+
+user feed shows live surplus
+
+Deliverable: “happy path” working locally end-to-end. 
+
+README
+
+Week 2 — Make it real + stable + shippable
+Day 8: Real notification provider (pick one)
+
+Implement one provider end-to-end (Twilio SMS or SendGrid email or push via Expo/Firebase):
+
+Worker sends actual messages
+
+Add retry + basic rate limit
+
+Deliverable: user receives a real SMS/email/push.
+
+Day 9: Preferences + geo/radius matching (make matching correct)
+
+Store user location (lat/lng) + radius
+
+Store store location
+
+Worker does distance filtering
+
+Optionally: cache prefs/geo in Redis for speed
+
+Deliverable: notifications only go to users “in range” and opted in.
+
+Day 10: CV MVP upgrade (minimal but real)
+
+Choose the simplest realistic approach:
+
+If YOLO: run a lightweight pretrained model and map classes → your item taxonomy
+
+If CLIP: do text prompts for a small set of items (“bread”, “salad”, “pastry”…)
+
+Keep confidence thresholding + fallback behavior
+
+Deliverable: non-trivial detections (not just canned output).
+
+Day 11: Client UX polish (feed + preferences + upload portal)
+
+User app:
+
+preferences screen
+
+live feed with refresh
+
+Shop portal:
+
+upload form (store_id + image)
+
+upload status
+
+Deliverable: a usable MVP UI for both roles.
+
+Day 12: Reliability pass
+
+Idempotency for /upload (avoid double-processing)
+
+Worker resilience:
+
+retries
+
+dead-letter queue (even if basic)
+
+Observability:
+
+structured logs
+
+simple metrics counters (events processed, notified, dedup hits)
+
+Deliverable: system survives restarts and doesn’t spam duplicates.
+
+Day 13: Testing + security basics
+
+Smoke tests for:
+
+upload → feed
+
+upload → notification
+
+Validate inputs:
+
+file type/size limits
+
+auth on user endpoints
+
+staff token/key for upload
+
+Secrets via env vars (no hardcoding)
+
+Deliverable: confidence you can demo without it breaking.
+
+Day 14: Deploy + demo script
+
+Deploy (pick fastest):
+
+Render/Fly.io for API/worker
+
+managed Redis (Upstash)
+
+managed Postgres (Neon/Supabase)
+
+Write a tight demo script + seeded sample users/stores.
+
+Deliverable: public/staging URL + repeatable demo.
+
+What to cut if you’re behind (safe MVP trims)
+
+Object storage for images (store only metadata for now)
+
+DB “history” (use Redis-only feed)
+
+Fancy CV (keep CLIP prompts with a small label set)
+
+Complex geo indexing (start with simple distance math)
+
+If you want, paste what stack you chose (FastAPI vs Flask, Postgres vs Mongo, SMS vs email), and I’ll turn this into a task checklist with exact endpoints + Redis key names + worker pseudocode aligned to your codebase.

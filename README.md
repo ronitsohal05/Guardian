@@ -1,5 +1,14 @@
 # Guardian
 
+## Docker Commands:
+docker compose down   
+docker compose up -d --build
+
+# Health Commands:
+curl http://localhost:5001/health   
+curl http://localhost:5001/redis-test   
+curl http://localhost:5001/mongo-test
+
 ## System Diagram
 ```mermaid
 flowchart TD

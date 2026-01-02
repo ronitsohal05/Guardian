@@ -1,6 +1,6 @@
 from flask import Flask, jsonify
-from api.db.mongo import db
-from api.core.redis_client import redis_client
+from db.mongo import db
+from core.redis_client import redis_client
 
 def create_app():
     app = Flask(__name__)
@@ -26,4 +26,4 @@ def create_app():
 app = create_app()
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+    app.run(host="0.0.0.0", port=5000)
