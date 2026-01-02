@@ -13,7 +13,7 @@ def infer():
         {
             "items": [
                 {"label": "bread", "confidence": 0.998},
-                {"label": "cake", "confidence": 0.87},
+                {"label": "salad", "confidence": 0.87},
             ],
             "source": "stub",
             "model_version": "v0",
