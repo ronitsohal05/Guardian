@@ -18,6 +18,10 @@ services:
     build: ./cv
     ports:
       - "8002:8002"
+    environment:
+      MODEL_PATH: /app/models/best.onnx
+    volumes:
+      - ./cv/model/runs_guardian/produce_bakery_yolov8n/weights:/app/models:ro
 
   api:
     build: ./api
