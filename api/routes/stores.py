@@ -9,6 +9,8 @@ def create_store():
     body = request.get_json(force=True) or {}
     store_id = (body.get("store_id") or "").strip()
     name = (body.get("name") or "").strip()
+    email = (body.get("email") or "").strip()
+    phone = (body.get("phone") or "").strip()
     location = body.get("location")
 
     if not store_id:
@@ -27,6 +29,8 @@ def create_store():
     doc = {
         "_id": store_id,  # use store_id as Mongo _id
         "name": name,
+        "email": email,
+        "phone": phone,
         "location": {"lat": lat, "lng": lng}
     }
 

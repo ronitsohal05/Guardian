@@ -6,7 +6,6 @@ import cv2
 
 app = Flask(__name__)
 
-# Load Model
 MODEL_PATH = os.environ.get("MODEL_PATH", "/app/models/best.onnx")
 
 SESSION = ort.InferenceSession(
@@ -28,7 +27,6 @@ CLASS_NAMES = [
 PRINT_SHAPE_ONCE = True
 
 
-# Preprocessing
 def preprocess(image_bytes: bytes) -> np.ndarray:
     img = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
     if img is None:
@@ -36,22 +34,19 @@ def preprocess(image_bytes: bytes) -> np.ndarray:
 
     img = cv2.resize(img, (640, 640))
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-
     img = img.astype(np.float32) / 255.0
-    img = np.transpose(img, (2, 0, 1))  # HWC -> CHW
-    img = np.expand_dims(img, axis=0)   # (1, 3, 640, 640)
+    img = np.transpose(img, (2, 0, 1))
+    img = np.expand_dims(img, axis=0)
     return img
 
-# Postprocessing
 def postprocess(outputs):
-    p = outputs[0][0].T          # (N, D)
-    scores = p[:, 4:]            # assumes D = 4 + nc
+    p = outputs[0][0].T
+    scores = p[:, 4:]
     cls_id = int(np.argmax(scores.max(axis=0)))
     return [{"label": CLASS_NAMES[cls_id]}]
 
 
 
-# Routes
 @app.get("/health")
 def health():
     return {"ok": True}

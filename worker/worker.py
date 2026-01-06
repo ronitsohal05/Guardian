@@ -1,6 +1,7 @@
 import os, json, time, math
 import redis
 from pymongo import MongoClient
+from email_client import send_match_notification
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://db:27017")
@@ -59,7 +60,6 @@ def process(event_id: str, fields: dict):
     s_lat = float(store["location"]["lat"])
     s_lng = float(store["location"]["lng"])
 
-    # Only users opted into notify and with a location set
     users = db["users"].find({"notify": True, "location": {"$ne": None}})
 
     for user in users:
@@ -85,7 +85,6 @@ def process(event_id: str, fields: dict):
             if filters and item not in filters:
                 continue
 
-            # Dedup per user+store+item
             dedup_key = f"dedup:{user_id}:{store_id}:{item}"
             if not r.set(dedup_key, "1", nx=True, ex=DEDUP_TTL_SECONDS):
                 print(f"[worker] Dedup hit {dedup_key}")
@@ -101,6 +100,16 @@ def process(event_id: str, fields: dict):
             }
             db["notifications"].insert_one(notif)
             print(f"[worker] MATCH -> notify stub: {notif}")
+
+            user_email = user.get("email")
+            store_name = store.get("name", "Unknown Store")
+            if user_email:
+                send_match_notification(
+                    recipient_email=user_email,
+                    store_name=store_name,
+                    item=item,
+                    distance_km=dist
+                )
 
 def main():
     ensure_group()
